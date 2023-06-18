@@ -24,5 +24,5 @@ dist-ssr
 *.sw?
 
 yarn.lock
-pnpm-lock.yml
+pnpm-lock.yaml
 package-lock.json

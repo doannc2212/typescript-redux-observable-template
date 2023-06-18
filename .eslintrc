@@ -1,0 +1,132 @@
+{
+  "extends": [
+    "eslint:recommended",
+    "react-app",
+    "prettier",
+    "plugin:@typescript-eslint/recommended",
+    "plugin:react-hooks/recommended",
+    "plugin:jsx-a11y/recommended",
+    "plugin:sonarjs/recommended"
+  ],
+  "parser": "@typescript-eslint/parser",
+  "parserOptions": { "ecmaVersion": "latest", "sourceType": "module" },
+  "plugins": ["react", "prettier", "jsdoc", "jsx-a11y", "sonarjs", "react-refresh"],
+  "rules": {
+    "prettier/prettier": [
+      "error",
+      {
+        "printWidth": 125,
+        "tabWidth": 2,
+        "singleQuote": true,
+        "trailingComma": "all",
+        "semi": true,
+        "endOfLine": "auto"
+      }
+    ],
+    "no-eval": "error",
+    "no-console": "warn",
+    "no-var": "error",
+    "no-unused-vars": "off",
+    "@typescript-eslint/no-unused-vars": ["error"],
+    "no-nested-ternary": "error",
+    "max-len": [
+      "error",
+      {
+        "code": 125
+      }
+    ],
+    "max-depth": ["error", 4],
+    "max-lines-per-function": [
+      "error",
+      { "max": 30, "skipBlankLines": true, "skipComments": true }
+    ],
+    "brace-style": ["error", "1tbs"],
+    "complexity": ["error", 5],
+    "spaced-comment": [
+      "error",
+      "always",
+      {
+        "line": {
+          "markers": ["/"]
+        },
+        "block": {
+          "exceptions": ["*"],
+          "balanced": true
+        }
+      }
+    ],
+    "eqeqeq": ["error", "always"],
+    "arrow-parens": ["error", "always"],
+    "@typescript-eslint/explicit-function-return-type": "error",
+    "@typescript-eslint/type-annotation-spacing": [
+      "error",
+      {
+        "before": false,
+        "after": true,
+        "overrides": {
+          "arrow": {
+            "before": true,
+            "after": true
+          }
+        }
+      }
+    ],
+    "@typescript-eslint/consistent-type-definitions": ["error", "type"],
+    "@typescript-eslint/no-explicit-any": "error",
+    "@typescript-eslint/no-non-null-assertion": "warn",
+    "@typescript-eslint/member-delimiter-style": [
+      "error",
+      {
+        "multiline": {
+          "delimiter": "semi",
+          "requireLast": true
+        },
+        "singleline": {
+          "delimiter": "semi",
+          "requireLast": false
+        }
+      }
+    ],
+    "jsx-a11y/anchor-is-valid": [
+      "error",
+      {
+        "components": ["Link"],
+        "specialLink": ["hrefLeft", "hrefRight"],
+        "aspects": ["invalidHref", "preferButton"]
+      }
+    ],
+    "jsdoc/require-jsdoc": 1,
+    "jsdoc/require-param": 1,
+    "jsdoc/require-param-description": 1
+  },
+  "overrides": [
+    {
+      "files": ["src/**/*.tsx"],
+      "rules": {
+        "max-lines-per-function": [
+          "error",
+          { "max": 200, "skipBlankLines": true, "skipComments": true }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/application/**/*.ts",
+        "src/epics/**/*.ts",
+        "src/store/*.ts"
+      ],
+      "rules": {
+        "@typescript-eslint/explicit-function-return-type": "off",
+        "@typescript-eslint/no-explicit-any": "off",
+        "@typescript-eslint/no-unused-vars": "off"
+      }
+    },
+    {
+      "files": ["src/__tests__/**/*.test.{ts,js}"],
+      "rules": {
+        "max-lines-per-function": "off",
+        "max-len": "off"
+      }
+    }
+  ]
+}
