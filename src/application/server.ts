@@ -2,20 +2,11 @@ import { AxiosRequestConfigWithFns } from '@/lib/helpers/network';
 import { API_REQUEST_TIMEOUT } from '@/lib/lookup/constant/common';
 
 const getBaseUrl = (): string => {
-  const stage = import.meta.env.MODE;
-  switch (stage) {
-    case 'development':
-      return 'http://localhost:4000/api';
-    case 'staging':
-      return 'https://example.com/api';
-    case 'production':
-      return 'https://example.com/api';
-    default:
-      return 'http://localhost:4000/api';
-  }
+  // https://vitejs.dev/guide/env-and-mode.html#env-files
+  return import.meta.env.VITE_HOST_URL;
 };
 
-export const ApiServerConfig: AxiosRequestConfigWithFns = {
+export const apiServerConfig: AxiosRequestConfigWithFns = {
   baseURL: getBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
@@ -24,7 +15,7 @@ export const ApiServerConfig: AxiosRequestConfigWithFns = {
   withCredentials: false,
   timeout: API_REQUEST_TIMEOUT,
   getToken: () => {
-    // todo set reset token
-    return '';
+    const token = localStorage.getItem('token');
+    return token;
   },
 };

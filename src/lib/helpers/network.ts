@@ -1,212 +1,136 @@
 /* eslint-disable */
-import axios, { AxiosError, AxiosRequestConfig } from 'axios';
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
-import { omit } from 'lodash';
 import { MAX_RETRY } from '../lookup/constant/common';
+import IndexedObject, { ApiResponse } from '../types';
+import { is400Error } from '../utils/error';
 import { createUUID } from '../utils/uuid';
-import { is400Error, isServerErrorNeedRetry } from '../utils/error';
-import IndexedObject, { TError } from '../types';
-
-type ConfigFns = {
-  getToken?: () => string | undefined;
-};
-
-export type AxiosRequestConfigWithFns = AxiosRequestConfig & ConfigFns;
-
-const initialConfigFns: Required<ConfigFns> = {
-  getToken: () => '',
-};
-
-export const retryWrapper = (config: AxiosRequestConfig) => {
-  const client = axios.create(config);
-  axiosRetry(client, {
-    retries: MAX_RETRY, // number of retries
-    retryDelay: (retryCount) => {
-      return 1 * retryCount * 1000;
-    },
-    retryCondition: (error: AxiosError<any, any>) => {
-      const statusCode = error.response?.data?.status;
-      const retryable = error.response?.data?.retryable != 0;
-      // if retry condition is not specified, by default idempotent requests are retried
-      return isServerErrorNeedRetry(statusCode, retryable);
-    },
-  });
-
-  return client;
-};
-
-const pickAxiosRequestConfig = (config: AxiosRequestConfigWithFns): AxiosRequestConfig =>
-  omit(config, Object.keys(initialConfigFns));
-
-const getConfigFn = (key: keyof ConfigFns) => (config: AxiosRequestConfigWithFns) =>
-  config[key] || initialConfigFns[key];
-const replacePathParams = (path: string, params: IndexedObject<string>): string =>
-  path.replace(/:([^/]+)/g, (_, p1) => encodeURIComponent(params[p1] ? params[p1] : ''));
-
-const toHeaders = (headers: [string, string][] = []): IndexedObject<string> =>
-  headers.reduce((data, [key, value]) => ({ ...data, [key]: value }), {} as IndexedObject<string>);
-
-const errorHandler = (err: AxiosError<any, any>): Promise<{ result: boolean; data: any }> => {
-  const statusCode = err.response?.data?.status;
-  const code = err.response?.data?.code;
-  if (is400Error(Number(statusCode), code)) {
-    return Promise.resolve({ result: false, data: err.response?.data });
-  }
-  throw {
-    status: statusCode,
-    code,
-    message: err.response?.data?.message,
-    data: err.response?.data?.data,
-    validation: err.response?.data?.validation,
-    error: err.response?.data?.error,
-  };
-};
+import Inventory from './inventory';
 
 export type AxiosRequestCustomConfig = {
   url: string;
   removeAuth?: boolean;
 };
 
+type ConfigFns = {
+  getToken?: () => string | null;
+  newInstance?: boolean;
+  baseUrl: string;
+};
+
+export type AxiosRequestConfigWithFns = AxiosRequestConfig & ConfigFns;
+
 export type AxiosRequestParameter<T> = T & {
   headers?: [string, string][];
 };
 
 export type RequestParameter = {
-  data?: IndexedObject;
   pathParameters?: IndexedObject;
+  data?: IndexedObject;
+  queryParameters?: IndexedObject;
 };
 
-export type AxiosResponse = {
-  result: boolean;
-  data: IndexedObject;
-  status?: number;
+const replacePathParams = (path: string, params: IndexedObject<string>): string =>
+  path.replace(/:([^/]+)/g, (_, p1) => encodeURIComponent(params[p1] ? params[p1] : ''));
+
+export const createClient = (config: AxiosRequestConfig, needRetry: boolean = false) => {
+  const client = axios.create(config);
+  if (needRetry) {
+    axiosRetry(client, {
+      retries: MAX_RETRY,
+      retryDelay: (retryCount) => retryCount * 1000,
+      retryCondition: (_: AxiosError<any, any>) => true,
+    });
+  }
+  return client;
 };
 
-const customHeaders = (commonConfig: AxiosRequestConfigWithFns): [string, string][] => {
-  const headersMap: [string, string][] = [];
-  headersMap.push(['request_id', createUUID()]);
-  return headersMap;
+const errorHandler = (err: AxiosError<unknown, unknown>): Promise<ApiResponse> => {
+  const statusCode = err.status;
+  const response: ApiResponse = {
+    status: statusCode,
+    ...(err.response?.data as ApiResponse | undefined),
+  };
+
+  const code = response?.error?.code;
+  // send error to client, does not show up sorry page
+  if (!!code && is400Error(Number(statusCode), code)) {
+    return Promise.resolve<ApiResponse>(response);
+  }
+  // for <ErrorBoundary />
+  throw response;
 };
 
-const postFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .post(replacePathParams(customConfig.url, params.pathParameters ?? {}), params.data, {
-        headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
-        },
-      })
-      .then(({ data }) => {
-        return { result: true, data };
-      })
-      .catch(errorHandler);
-  };
+type RequestCaller = (params: AxiosRequestParameter<RequestParameter>) => Promise<ApiResponse>;
+// type RequestSetup = (config: AxiosRequestCustomConfig) => RequestCaller;
+type SupportedMethod = keyof Pick<AxiosInstance, 'get' | 'post' | 'put' | 'patch' | 'delete'>;
 
-const getFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .get(replacePathParams(customConfig.url, params.pathParameters ?? {}), {
+export class ApiClient {
+  _axiosInstance: AxiosInstance;
+  _tokenInventory: Inventory<string>;
+  constructor(axios: AxiosInstance = createClient({ url: import.meta.env.VITE_HOST_URL })) {
+    this._axiosInstance = axios;
+    this._axiosInstance.interceptors.response.use(
+      (response) => ({
+        ...response.data,
+        status: response.status,
+      }),
+      errorHandler,
+    );
+    this._tokenInventory = new Inventory<string>(createUUID());
+  }
+  async _doRequest(
+    config: AxiosRequestCustomConfig,
+    params: AxiosRequestParameter<RequestParameter>,
+    method: SupportedMethod,
+  ): Promise<ApiResponse> {
+    const { url, removeAuth } = config;
+    const { pathParameters = {}, data: body, queryParameters } = params;
+    const token = this._tokenInventory.get();
+    const response = await this._axiosInstance[method](
+      replacePathParams(url, pathParameters),
+      body,
+      {
         headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
+          Authorization: !removeAuth ? `Bearer ${token}` : undefined,
         },
-        params: {
-          ...params?.data,
-        },
-      })
-      .then(({ data }) => {
-        return { result: true, data };
-      })
-      .catch(errorHandler);
-  };
+        params: queryParameters,
+      },
+    );
+    return response.data;
+  }
 
-const putFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .put(replacePathParams(customConfig.url, params.pathParameters ?? {}), params?.data, {
-        headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
-        },
-      })
-      .then(({ data }) => {
-        return { result: true, data };
-      })
-      .catch(errorHandler);
-  };
+  get(config: AxiosRequestCustomConfig): RequestCaller {
+    return (params: AxiosRequestParameter<RequestParameter>) =>
+      this._doRequest(config, params, 'get');
+  }
 
-const deleteFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .delete(replacePathParams(customConfig.url, params.pathParameters ?? {}), {
-        headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
-        },
-        params: {
-          ...params?.data,
-        },
-      })
-      .then(({ data }) => {
-        return { result: true, data };
-      })
-      .catch(errorHandler);
-  };
+  post(config: AxiosRequestCustomConfig): RequestCaller {
+    return (params: AxiosRequestParameter<RequestParameter>) =>
+      this._doRequest(config, params, 'post');
+  }
 
-const patchFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .patch(replacePathParams(customConfig.url, params.pathParameters ?? {}), params?.data, {
-        headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
-        },
-      })
-      .then(({ data }) => {
-        return { result: true, data };
-      })
-      .catch(errorHandler);
-  };
+  put(config: AxiosRequestCustomConfig): RequestCaller {
+    return (params: AxiosRequestParameter<RequestParameter>) =>
+      this._doRequest(config, params, 'put');
+  }
 
-const putUploadFn =
-  (commonConfig: AxiosRequestConfigWithFns) =>
-  (customConfig: AxiosRequestCustomConfig) =>
-  async (params: AxiosRequestParameter<RequestParameter>): Promise<AxiosResponse | TError> => {
-    const client = retryWrapper(pickAxiosRequestConfig(commonConfig));
-    return client
-      .put(customConfig.url, params?.data, {
-        headers: {
-          ...toHeaders(customHeaders(commonConfig)),
-          ...toHeaders(params.headers),
-        },
-      })
-      .then(({ data, status }) => {
-        return { result: true, data, status };
-      })
-      .catch(errorHandler);
-  };
+  patch(config: AxiosRequestCustomConfig): RequestCaller {
+    return (params: AxiosRequestParameter<RequestParameter>) =>
+      this._doRequest(config, params, 'patch');
+  }
 
-export const ApiClient = (config: AxiosRequestConfigWithFns) => ({
-  postFn: postFn(config),
-  getFn: getFn(config),
-  putFn: putFn(config),
-  deleteFn: deleteFn(config),
-  patchFn: patchFn(config),
-  putUploadFn: putUploadFn(config),
-});
+  delete(config: AxiosRequestCustomConfig): RequestCaller {
+    return (params: AxiosRequestParameter<RequestParameter>) =>
+      this._doRequest(config, params, 'delete');
+  }
+
+  setSession(token: string): void {
+    this._tokenInventory.set(token);
+    this._axiosInstance.defaults.headers.common.Authorization = `Bearer ${token}`;
+  }
+  clearSession(): void {
+    this._tokenInventory.remove();
+    delete this._axiosInstance.defaults.headers.common.Authorization;
+  }
+}
