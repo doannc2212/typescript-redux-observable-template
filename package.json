@@ -71,6 +71,7 @@
     "rimraf": "^5.0.5",
     "turbo": "^1.10.3",
     "typescript": "5.1.3",
+    "typescript-fsa-redux-observable-of-action": "^0.0.2",
     "vite": "^4.3.9",
     "vite-plugin-eslint": "^1.8.1"
   }

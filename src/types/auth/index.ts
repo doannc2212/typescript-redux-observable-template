@@ -1,4 +1,4 @@
-import { Email, ID, Password, Username } from '@shared/types';
+import { Email, ID, Password, TServiceResult, Username } from '@shared/types';
 
 export type TRequestSignIn = {
   username: Username;
@@ -18,3 +18,10 @@ export type TRequestSignUp = {
 };
 
 export type TResponseSignUp = TResponseSignIn;
+
+export type TAuthStatePayload = TServiceResult<TResponseSignIn> | TServiceResult<TResponseSignUp>;
+
+export type TAuthState = {
+  isLoading: boolean;
+} & TServiceResult<TResponseSignIn> &
+  TServiceResult<TResponseSignUp>;
