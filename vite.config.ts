@@ -1,5 +1,5 @@
-import { fileURLToPath, URL } from 'url';
 import react from '@vitejs/plugin-react-swc';
+import { fileURLToPath, URL } from 'url';
 import { defineConfig } from 'vite';
 import eslint from 'vite-plugin-eslint';
 
@@ -18,8 +18,8 @@ export default defineConfig({
         replacement: fileURLToPath(new URL('./src', import.meta.url)),
       },
       {
-        find: '@lib',
-        replacement: fileURLToPath(new URL('./src/lib', import.meta.url)),
+        find: '@shared',
+        replacement: fileURLToPath(new URL('./src/shared', import.meta.url)),
       },
     ],
   },

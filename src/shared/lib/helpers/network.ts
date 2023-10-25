@@ -10,15 +10,8 @@ import Inventory from './inventory';
 export type AxiosRequestCustomConfig = {
   url: string;
   removeAuth?: boolean;
+  getToken?: () => string;
 };
-
-type ConfigFns = {
-  getToken?: () => string | null;
-  newInstance?: boolean;
-  baseUrl: string;
-};
-
-export type AxiosRequestConfigWithFns = AxiosRequestConfig & ConfigFns;
 
 export type AxiosRequestParameter<T> = T & {
   headers?: [string, string][];
@@ -61,7 +54,7 @@ const errorHandler = (err: AxiosError<unknown, unknown>): Promise<ApiResponse> =
   throw response;
 };
 
-type RequestCaller = (params: AxiosRequestParameter<RequestParameter>) => Promise<ApiResponse>;
+type RequestDispatcher = (params: AxiosRequestParameter<RequestParameter>) => Promise<ApiResponse>;
 // type RequestSetup = (config: AxiosRequestCustomConfig) => RequestCaller;
 type SupportedMethod = keyof Pick<AxiosInstance, 'get' | 'post' | 'put' | 'patch' | 'delete'>;
 
@@ -86,7 +79,7 @@ export class ApiClient {
   ): Promise<ApiResponse> {
     const { url, removeAuth } = config;
     const { pathParameters = {}, data: body, queryParameters } = params;
-    const token = this._tokenInventory.get();
+    const token = config.getToken?.() || this._tokenInventory.get();
     const response = await this._axiosInstance[method](
       replacePathParams(url, pathParameters),
       body,
@@ -100,27 +93,27 @@ export class ApiClient {
     return response.data;
   }
 
-  get(config: AxiosRequestCustomConfig): RequestCaller {
+  get(config: AxiosRequestCustomConfig): RequestDispatcher {
     return (params: AxiosRequestParameter<RequestParameter>) =>
       this._doRequest(config, params, 'get');
   }
 
-  post(config: AxiosRequestCustomConfig): RequestCaller {
+  post(config: AxiosRequestCustomConfig): RequestDispatcher {
     return (params: AxiosRequestParameter<RequestParameter>) =>
       this._doRequest(config, params, 'post');
   }
 
-  put(config: AxiosRequestCustomConfig): RequestCaller {
+  put(config: AxiosRequestCustomConfig): RequestDispatcher {
     return (params: AxiosRequestParameter<RequestParameter>) =>
       this._doRequest(config, params, 'put');
   }
 
-  patch(config: AxiosRequestCustomConfig): RequestCaller {
+  patch(config: AxiosRequestCustomConfig): RequestDispatcher {
     return (params: AxiosRequestParameter<RequestParameter>) =>
       this._doRequest(config, params, 'patch');
   }
 
-  delete(config: AxiosRequestCustomConfig): RequestCaller {
+  delete(config: AxiosRequestCustomConfig): RequestDispatcher {
     return (params: AxiosRequestParameter<RequestParameter>) =>
       this._doRequest(config, params, 'delete');
   }
