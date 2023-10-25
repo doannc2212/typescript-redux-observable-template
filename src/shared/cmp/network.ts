@@ -1,13 +1,13 @@
 /* eslint-disable */
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import axiosRetry from 'axios-retry';
-import { MAX_RETRY } from '../lookup/constant/common';
+import { MAX_RETRY } from '../lookup/common';
 import IndexedObject, { ApiResponse } from '../types';
-import { is400Error } from '../utils/error';
-import { createUUID } from '../utils/uuid';
+import { is400Error } from './error';
+import { createUUID } from './uuid';
 import Inventory from './inventory';
 
-export type AxiosRequestCustomConfig = {
+export type AxiosRequestCustomConfig<T = unknown> = T & {
   url: string;
   removeAuth?: boolean;
   getToken?: () => string;

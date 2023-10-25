@@ -22,7 +22,10 @@
 
     "paths": {
       "@/*": ["./src/*"],
-      "@shared/*": [".src/shared/*"]
+      "@shared/*": ["./src/shared/*"],
+      "@cmp/*": ["./src/shared/cmp/*"],
+      "@use/*": ["./src/shared/use/*"],
+      "@lookup/*": ["./src/shared/use/*"]
     }
   },
   "include": ["src"],

@@ -1,3 +1,3 @@
-import { ApiClient } from '@/shared/lib/helpers/network';
+import { ApiClient } from '@cmp/network';
 
 export const api = new ApiClient();

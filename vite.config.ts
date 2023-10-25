@@ -21,6 +21,18 @@ export default defineConfig({
         find: '@shared',
         replacement: fileURLToPath(new URL('./src/shared', import.meta.url)),
       },
+      {
+        find: '@cmp',
+        replacement: fileURLToPath(new URL('./src/shared/cmp', import.meta.url)),
+      },
+      {
+        find: '@use',
+        replacement: fileURLToPath(new URL('./src/shared/use', import.meta.url)),
+      },
+      {
+        find: '@lookup',
+        replacement: fileURLToPath(new URL('./src/shared/lookup', import.meta.url)),
+      },
     ],
   },
 });
