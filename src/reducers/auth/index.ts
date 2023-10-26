@@ -7,8 +7,8 @@ const initialState: TAuthState = {
   error: null,
 };
 
-const _module = createSlice({
-  name: '[store/authenticate]',
+export const authModule = createSlice({
+  name: '[store/authenticate]/root',
   initialState,
   reducers: {
     save(state: TAuthState, action: PayloadAction<TAuthStatePayload>) {
@@ -25,5 +25,3 @@ const _module = createSlice({
     },
   },
 });
-
-export const authModule = _module;

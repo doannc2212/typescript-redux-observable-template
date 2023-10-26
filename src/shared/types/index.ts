@@ -6,6 +6,7 @@ export type THooks<T> = () => T;
 export type TServiceResult<T = unknown> = {
   data: T | null;
   error: TError | null;
+  warning?: string;
 };
 
 export interface PaginationResponse<T = unknown> {

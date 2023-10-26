@@ -1,11 +1,9 @@
 import { TRequestSignIn, TRequestSignUp } from '@/types/auth';
 import { createAction } from '@reduxjs/toolkit';
 
-const _createAction = <T = unknown>(value: string) => createAction<T>(`[auth]/${value}`);
+const _ca = <T = unknown>(name: string) => createAction<T>(`[auth]${name}`);
 
-const _actions = {
-  postSignIn: _createAction<TRequestSignIn>('postSignIn'),
-  postSignUp: _createAction<TRequestSignUp>('postSignUp'),
+export const authActions = {
+  postSignIn: _ca<TRequestSignIn>('postSignIn'),
+  postSignUp: _ca<TRequestSignUp>('postSignUp'),
 };
-
-export const authActions = _actions;

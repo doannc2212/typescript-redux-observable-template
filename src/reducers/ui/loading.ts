@@ -11,7 +11,7 @@ const initialState: TState = {
 };
 
 const _module = createSlice({
-  name: '[store/ui/loading]',
+  name: '[store/ui]/loading',
   initialState,
   reducers: {
     on(state: TState) {
