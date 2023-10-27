@@ -1,7 +1,7 @@
 {
-  "name": "typescript-redux-observable-template",
+  "name": "typescript-redux-saga-template",
   "version": "0.0.0",
-  "description": "A Vite + React + Redux + Redux-Observable + Typescript template",
+  "description": "A Vite + React + Redux + Redux-Saga + Typescript template",
   "repository": {
     "type": "git",
     "url": "git://github.com/doannc2212/typescript-redux-observable-template.git"
